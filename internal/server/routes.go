@@ -10,6 +10,9 @@ import (
 func (s *Server) RegisterRoutes() http.Handler {
 	e := echo.New()
 
+	// Global API config
+	//api := e.Group("/api")
+
 	// Block - CORS and Health
 	{
 		e.Use(middleware.Logger())
@@ -31,8 +34,20 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// Block - User Routes
 	{
-		//api := e.Group("/api")
 
+	}
+
+	//Block - Core
+	{
+
+	}
+
+	//Block - Auth
+	{
+		//auth := api.Group("/auth")
+		//auth.POST("/register",registrationHandler);
+		//auth.POST("/login",loginHandler);
+		//auth.POST("/reset-password",resetPassHandler)
 	}
 
 	return e
