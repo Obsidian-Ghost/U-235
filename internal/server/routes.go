@@ -1,6 +1,7 @@
 package server
 
 import (
+	"U-235/Handlers"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -8,6 +9,10 @@ import (
 )
 
 func (s *Server) RegisterRoutes() http.Handler {
+
+	//Dependencies Initialization
+	userhandler := Handlers.UserHandlers(echo.Validator)
+
 	e := echo.New()
 
 	// Global API config
