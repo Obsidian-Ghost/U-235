@@ -59,7 +59,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	{
 		auth := api.Group("/auth")
 		auth.POST("/register", userHandler.UserRegistrationHandler)
-		//auth.POST("/login",loginHandler);
+		auth.POST("/login", userHandler.UserLoginHandler)
 		//auth.POST("/reset-password",resetPassHandler)
 	}
 
