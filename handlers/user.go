@@ -65,6 +65,27 @@ func (u *userHandler) UserRegistrationHandler(c echo.Context) error {
 }
 
 func (u *userHandler) UserLoginHandler(c echo.Context) error {
-	// TODO: implement login logic
-	panic("implement me")
+	var user models.UserLogin
+	err := c.Bind(&user)
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request format")
+	}
+	err = c.Validate(user)
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid request payload: %v", err))
+	}
+	ctx := c.Request().Context()
+	token, err := u.UserService.UserLoginService(user, ctx)
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusUnauthorized, "User login failed")
+	}
+
+	// Return token in the response
+	return c.JSON(http.StatusOK, map[string]string{
+		"token":   token,
+		"message": "User logged in successfully",
+	})
 }

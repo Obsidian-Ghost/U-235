@@ -5,12 +5,13 @@ import (
 	"U-235/repositories"
 	"U-235/utils"
 	"context"
+	"errors"
 	"fmt"
 )
 
 type UserServices interface {
 	UserRegistrationService(user models.UserRegister, ctx context.Context) (*models.User, error)
-	UserLoginService(login models.UserLogin, ctx context.Context) error
+	UserLoginService(login models.UserLogin, ctx context.Context) (string, error)
 }
 
 type UserService struct {
@@ -39,7 +40,12 @@ func (u *UserService) UserRegistrationService(user models.UserRegister, ctx cont
 	return registeredUser, nil
 }
 
-func (u *UserService) UserLoginService(login models.UserLogin, ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+func (u *UserService) UserLoginService(user models.UserLogin, ctx context.Context) (string, error) {
+	email := user.Email
+	password := user.Password
+	token, err := u.repo.UserLoginService(email, password, ctx)
+	if err != nil {
+		return "", errors.New("failed to login")
+	}
+	return token, nil
 }

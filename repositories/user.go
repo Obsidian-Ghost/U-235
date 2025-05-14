@@ -2,15 +2,20 @@ package repositories
 
 import (
 	"U-235/models"
+	"U-235/utils"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"os"
+	"time"
 )
 
 type UserRepository interface {
 	UserRegistrationService(Name, email, passwordHashed string, ctx context.Context) (*models.User, error)
-	UserLoginService(user models.UserLogin, ctx context.Context) error
+	UserLoginService(email, password string, ctx context.Context) (string, error)
 }
 
 type userRepo struct {
@@ -61,7 +66,37 @@ func (u *userRepo) UserRegistrationService(name, email, passwordHashed string, c
 	return &user, nil
 }
 
-func (u userRepo) UserLoginService(user models.UserLogin, ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+func (u *userRepo) UserLoginService(email, password string, ctx context.Context) (string, error) {
+	query := `SELECT id, password FROM users WHERE email = $1`
+	var (
+		userID       uuid.UUID
+		hashedPasswd string
+	)
+	// Query the database for the user with the provided email
+	err := u.db.QueryRowContext(ctx, query, email).Scan(&userID, &hashedPasswd)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", errors.New("invalid email or password")
+		}
+		return "", fmt.Errorf("database error: %w", err)
+	}
+	// Compare the provided password with the hashed password from DB
+	err = utils.VerifyPassword(hashedPasswd, password)
+	if err != nil {
+		return "", errors.New("invalid email or password")
+	}
+	claims := &models.JwtClaims{
+		UserId: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(72 * time.Hour)),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	secret := os.Getenv("JWT_SECRET")
+	encodedToken, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", err
+	}
+
+	return encodedToken, nil
 }
