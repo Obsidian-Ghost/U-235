@@ -12,13 +12,11 @@ type UserHandlers interface {
 
 type userHandler struct {
 	userService services.UserServices
-	validator   echo.Validator
 }
 
-func NewUserHandler(services services.UserServices, validator echo.Validator) UserHandlers {
+func NewUserHandler(services services.UserServices) UserHandlers {
 	return &userHandler{
 		userService: services,
-		validator:   validator,
 	}
 }
 

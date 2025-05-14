@@ -2,11 +2,12 @@ package services
 
 import (
 	"U-235/models"
+	"U-235/repositories"
 	"context"
 	"github.com/labstack/echo/v4"
 )
 
-func NewUserService() UserServices {
+func NewUserService(repo repositories.UserRepository) UserServices {
 
 }
 

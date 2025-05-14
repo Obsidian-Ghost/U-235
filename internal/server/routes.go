@@ -1,7 +1,11 @@
 package server
 
 import (
-	"U-235/Handlers"
+	"U-235/handlers"
+	"U-235/internal/database"
+	"U-235/repositories"
+	"U-235/services"
+	"U-235/utils"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -10,10 +14,14 @@ import (
 
 func (s *Server) RegisterRoutes() http.Handler {
 
-	//Dependencies Initialization
-	userhandler := Handlers.UserHandlers(echo.Validator)
-
 	e := echo.New()
+
+	//Dependencies Initialization
+	e.Validator = utils.NewValidator()
+	db := database.NewPsqlDB()
+	userRepo := repositories.NewUserRepo(db)
+	userService := services.NewUserService(userRepo)
+	userhandler := handlers.NewUserHandler(userService)
 
 	// Global API config
 	//api := e.Group("/api")
