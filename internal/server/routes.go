@@ -21,10 +21,10 @@ func (s *Server) RegisterRoutes() http.Handler {
 	db := database.NewPsqlDB()
 	userRepo := repositories.NewUserRepo(db)
 	userService := services.NewUserService(userRepo)
-	userhandler := handlers.NewUserHandler(userService)
+	userHandler := handlers.NewUserHandler(userService)
 
 	// Global API config
-	//api := e.Group("/api")
+	api := e.Group("/api")
 
 	// Block - CORS and Health
 	{
@@ -57,8 +57,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	//Block - Auth
 	{
-		//auth := api.Group("/auth")
-		//auth.POST("/register",registrationHandler);
+		auth := api.Group("/auth")
+		auth.POST("/register", userHandler.UserRegistrationHandler)
 		//auth.POST("/login",loginHandler);
 		//auth.POST("/reset-password",resetPassHandler)
 	}
