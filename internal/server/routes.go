@@ -49,7 +49,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// Block - User Routes
 	{
-
+		//user := e.Group("/user")
+		//user.GET("/", handlers.GetUserHandler)
+		//user.GET("/urls", handlers.GetUrlsHandler)
 	}
 
 	//Block - Core

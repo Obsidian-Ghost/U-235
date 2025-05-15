@@ -3,14 +3,17 @@ package middlewares
 import (
 	"errors"
 	"github.com/google/uuid"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("your-secret-key") // Replace with your actual secret
+var secret string = os.Getenv("JWT_SECRET")
 
-// Simple errors
+var jwtSecret = []byte(secret) // Replace with your actual secret
+
+// errors
 var (
 	ErrInvalidToken = errors.New("invalid token")
 	ErrExpiredToken = errors.New("token has expired")
