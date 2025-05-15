@@ -2,11 +2,9 @@ package services
 
 import (
 	"U-235/models"
+	"U-235/repositories"
 	"context"
-	"crypto/md5"
-	"encoding/hex"
-	"strconv"
-	"time"
+	"github.com/google/uuid"
 )
 
 type UrlServices interface {
@@ -14,8 +12,16 @@ type UrlServices interface {
 }
 
 type ShortUrlService struct {
+	RedisRepo repositories.RedisRepo
+	// PsqlRepo here
 }
 
-func CreateUrlService(originalUrl string, customShortUrl string, expireTime int64, ctx context.Context) (*models.CreateShortUrlRes, error) {
+func NewShortUrlService(repo repositories.RedisRepo) *ShortUrlService {
+	return &ShortUrlService{
+		RedisRepo: repo,
+	}
+}
+
+func (r *ShortUrlService) CreateUrlService(userId uuid.UUID, originalUrl string, customShortUrl string, expireTime int64, ctx context.Context) (*models.CreateShortUrlRes, error) {
 
 }

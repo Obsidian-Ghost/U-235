@@ -9,7 +9,7 @@ type CreateShortUrlReq struct {
 }
 
 type CreateShortUrlRes struct {
-	OriginalUrl string    `json:"original_url" validate:"required,url"`
-	ShortUrl    string    `json:"short_url" validate:"required,url"`
-	ExpireTime  time.Time `json:"expire_time" validate:"required,min=0"`
+	OriginalUrl string        `json:"original_url" validate:"required,url"`
+	ShortUrl    string        `json:"short_url" validate:"required,url"`
+	ExpireTime  time.Duration `json:"expire_time" validate:"required,min=0"`
 }
