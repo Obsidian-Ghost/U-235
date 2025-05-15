@@ -80,7 +80,7 @@ func (u *userHandler) UserLoginHandler(c echo.Context) error {
 	token, err := u.UserService.UserLoginService(user, ctx)
 	if err != nil {
 		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusUnauthorized, "User login failed")
+		return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 	}
 
 	// Return token in the response

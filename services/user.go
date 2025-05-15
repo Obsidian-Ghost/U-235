@@ -5,7 +5,6 @@ import (
 	"U-235/repositories"
 	"U-235/utils"
 	"context"
-	"errors"
 	"fmt"
 )
 
@@ -45,7 +44,7 @@ func (u *UserService) UserLoginService(user models.UserLogin, ctx context.Contex
 	password := user.Password
 	token, err := u.repo.UserLoginService(email, password, ctx)
 	if err != nil {
-		return "", errors.New("failed to login")
+		return "", err
 	}
 	return token, nil
 }

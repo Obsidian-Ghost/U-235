@@ -1,16 +1,14 @@
 package repositories
 
 import (
+	"U-235/middlewares"
 	"U-235/models"
 	"U-235/utils"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"os"
-	"time"
 )
 
 type UserRepository interface {
@@ -85,18 +83,10 @@ func (u *userRepo) UserLoginService(email, password string, ctx context.Context)
 	if err != nil {
 		return "", errors.New("invalid email or password")
 	}
-	claims := &models.JwtClaims{
-		UserId: userID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(72 * time.Hour)),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	secret := os.Getenv("JWT_SECRET")
-	encodedToken, err := token.SignedString([]byte(secret))
-	if err != nil {
-		return "", err
-	}
 
+	encodedToken, err := middlewares.CreateToken(userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to create token: %w", err)
+	}
 	return encodedToken, nil
 }

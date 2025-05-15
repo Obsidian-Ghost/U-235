@@ -14,11 +14,13 @@ import (
 
 func (s *Server) RegisterRoutes() http.Handler {
 
+	//Echo Instance
 	e := echo.New()
 
 	//Dependencies Initialization
 	e.Validator = utils.NewValidator()
 	db := database.NewPsqlDB()
+	_, _ = database.NewRedisDatabase()
 	userRepo := repositories.NewUserRepo(db)
 	userService := services.NewUserService(userRepo)
 	userHandler := handlers.NewUserHandler(userService)
