@@ -30,24 +30,19 @@ func (u *UrlsPsqlImpl) DeleteUrlRecord(ctx context.Context, UserId uuid.UUID, Ur
 }
 
 func (u *UrlsPsqlImpl) SaveUrl(ctx context.Context, urlInfo *models.ShortenedUrlInfoReq) (*models.ShortenedUrlInfoRes, *models.PsqlRollback, error) {
-	// Start a transaction for atomic DB operation
+	// Start a transaction
 	tx, err := u.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer func(tx *sql.Tx) {
-		err := tx.Rollback()
-		if err != nil {
-
-		}
-	}(tx)
+	defer tx.Rollback()
 
 	query := `
         INSERT INTO shortened_urls (
             user_id, original_url, short_url, expires_at, is_active
         ) VALUES (
             $1, $2, $3, $4, $5
-        ) RETURNING id, user_id, original_url, short_url, expires_at, true;
+        ) RETURNING id, user_id, original_url, short_url, expires_at, is_active, created_at;
     `
 
 	var response models.ShortenedUrlInfoRes
@@ -59,6 +54,7 @@ func (u *UrlsPsqlImpl) SaveUrl(ctx context.Context, urlInfo *models.ShortenedUrl
 		urlInfo.OriginalUrl,
 		urlInfo.ShortUrl,
 		urlInfo.ExpiresAt,
+		urlInfo.IsActive,
 	).Scan(
 		&response.Id,
 		&response.UserId,
@@ -70,12 +66,9 @@ func (u *UrlsPsqlImpl) SaveUrl(ctx context.Context, urlInfo *models.ShortenedUrl
 	)
 
 	if err != nil {
-		// Check for unique constraint violation (duplicate short_url)
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == "23505" {
-				return nil, nil, fmt.Errorf("short URL already exists: %w", err)
-			}
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, nil, fmt.Errorf("short URL already exists: %w", err)
 		}
 		return nil, nil, fmt.Errorf("failed to insert shortened url: %w", err)
 	}

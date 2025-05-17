@@ -33,12 +33,17 @@ func NewShortUrlService(repo repositories.RedisRepo, psql repositories.UrlsPsql)
 func (r *ShortUrlService) CreateUrlService(userID uuid.UUID, req *models.CreateShortUrlReq, ctx context.Context) (*models.ShortenedUrlInfoRes, error) {
 	CustomUrlTag := req.CustomShortUrl
 
+	existingShortUrl, found := r.RedisRepo.GetShortUrl(ctx, req.OriginalUrl)
+	if found {
+		//get data from psql using "userId AND originalUrl" , then return the existing Mapping
+	}
+
 	urlInfo := models.ShortenedUrlInfoReq{
 		UserId:      userID,
 		OriginalUrl: req.OriginalUrl,
 	}
 
-	if CustomUrlTag != "" && len(CustomUrlTag) < 6 {
+	if CustomUrlTag != "" && len(CustomUrlTag) < 5 {
 		return nil, errors.New("invalid length of the custom url suffix")
 	} else if CustomUrlTag == "" {
 		shortID := core.GenerateShortID(req.OriginalUrl)
@@ -50,6 +55,9 @@ func (r *ShortUrlService) CreateUrlService(userID uuid.UUID, req *models.CreateS
 		}
 		urlInfo.ShortUrl = Domain + CustomUrlTag
 	}
+
+	urlInfo.ExpiresAt = time.Now().Add(time.Duration(req.ExpireTime) * time.Hour)
+	urlInfo.IsActive = true
 
 	// 1. Save to PostgreSQL first
 	finalUrlRes, rollback, err := r.PsqlRepo.SaveUrl(ctx, &urlInfo)
