@@ -20,10 +20,15 @@ func (s *Server) RegisterRoutes() http.Handler {
 	//Dependencies Initialization
 	e.Validator = utils.NewValidator()
 	db := database.NewPsqlDB()
-	_, _ = database.NewRedisDatabase()
+	redisDB, _ := database.NewRedisDatabase()
 	userRepo := repositories.NewUserRepo(db)
 	userService := services.NewUserService(userRepo)
 	userHandler := handlers.NewUserHandler(userService)
+
+	psqlRepo := repositories.NewUrlsPsql(db)
+	redisRepo, _ := repositories.NewUrlRedis(redisDB)
+	urlService := services.NewShortUrlService(redisRepo, psqlRepo)
+	urlHandler := handlers.NewUrlHandler(urlService)
 
 	// Global API config
 	api := e.Group("/api")
@@ -49,14 +54,15 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// Block - User Routes
 	{
-		//user := e.Group("/user")
+		user := api.Group("/user")
 		//user.GET("/", handlers.GetUserHandler)
 		//user.GET("/urls", handlers.GetUrlsHandler)
+		user.POST("/urls", urlHandler.CreateUrlHandler)
 	}
 
 	//Block - Core
 	{
-
+		//e.GET("/:shortId",)
 	}
 
 	//Block - Auth

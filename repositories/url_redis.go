@@ -55,15 +55,15 @@ func (u *UrlRedis) GetShortUrl(ctx context.Context, originalUrl string) (string,
 	return shortUrl, true
 }
 
-func (u *UrlRedis) SaveUrl(ctx context.Context, originalUrl string, shortUrl string, time time.Duration) error {
+func (u *UrlRedis) SaveUrl(ctx context.Context, originalUrl string, shortUrl string, ExpiryTime time.Duration) error {
 	// Use a pipeline for atomic operations
 	pipe := u.RedisClient.Pipeline()
 
 	// Store shortID -> originalURL mapping (for redirects)
-	pipe.Set(ctx, shortUrl, originalUrl, time)
+	pipe.Set(ctx, shortUrl, originalUrl, ExpiryTime)
 
 	// Store originalURL -> shortID mapping (to prevent duplicates)
-	pipe.Set(ctx, originalUrl, shortUrl, time)
+	pipe.Set(ctx, originalUrl, shortUrl, ExpiryTime)
 
 	_, err := pipe.Exec(ctx)
 	return err

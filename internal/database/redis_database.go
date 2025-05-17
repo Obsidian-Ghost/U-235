@@ -16,14 +16,6 @@ const (
 	envRedisProtocol = "REDIS_DB_PROTOCOL"
 )
 
-// RedisConfig holds connection parameters for Redis database
-type RedisConfig struct {
-	Address  string
-	Password string
-	DB       int
-	Protocol int
-}
-
 // NewRedisDatabase creates a new Redis configuration from environment variables.
 // Returns initialized RedisConfig or error if any environment variable is invalid.
 func NewRedisDatabase() (*redis.Client, error) {
