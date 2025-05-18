@@ -32,17 +32,6 @@ func NewShortUrlService(repo repositories.RedisRepo, psql repositories.UrlsPsql)
 
 func (r *ShortUrlService) CreateUrlService(userID uuid.UUID, req *models.CreateShortUrlReq, ctx context.Context) (*models.ShortenedUrlInfoRes, error) {
 	CustomUrlTag := req.CustomShortUrl
-
-	existingShortUrl, found := r.RedisRepo.GetShortUrl(ctx, req.OriginalUrl)
-	if found {
-		//get data from psql using "userId AND originalUrl" , then return the existing Mapping
-		ExistingUrlInfo, err := r.PsqlRepo.GetUrlInfoByUserIdAndShortUrl(ctx, userID, existingShortUrl)
-		if err != nil {
-			return nil, err
-		}
-		return ExistingUrlInfo, nil
-	}
-
 	urlInfo := models.ShortenedUrlInfoReq{
 		UserId:      userID,
 		OriginalUrl: req.OriginalUrl,
