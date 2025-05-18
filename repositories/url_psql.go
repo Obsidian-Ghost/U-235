@@ -12,6 +12,7 @@ import (
 
 type UrlsPsql interface {
 	SaveUrl(ctx context.Context, UrlInfo *models.ShortenedUrlInfoReq) (*models.ShortenedUrlInfoRes, *models.PsqlRollback, error)
+	GetUrlInfoByUserIdAndShortUrl(ctx context.Context, userId uuid.UUID, shortUrl string) (*models.ShortenedUrlInfoRes, error)
 	DeleteUrlRecord(ctx context.Context, UserId uuid.UUID, UrlRecordId uuid.UUID) error
 }
 
@@ -83,4 +84,34 @@ func (u *UrlsPsqlImpl) SaveUrl(ctx context.Context, urlInfo *models.ShortenedUrl
 	}
 
 	return &response, rollback, nil
+}
+
+func (u *UrlsPsqlImpl) GetUrlInfoByUserIdAndShortUrl(ctx context.Context, userId uuid.UUID, shortUrl string) (*models.ShortenedUrlInfoRes, error) {
+	query := `
+		SELECT id, user_id, original_url, short_url, expires_at, is_active, created_at
+		FROM shortened_urls
+		WHERE user_id = $1 AND short_url = $2;
+	`
+
+	var urlInfo models.ShortenedUrlInfoRes
+
+	err := u.db.QueryRowContext(ctx, query, userId, shortUrl).Scan(
+		&urlInfo.Id,
+		&urlInfo.UserId,
+		&urlInfo.OriginalUrl,
+		&urlInfo.ShortUrl,
+		&urlInfo.ExpiresAt,
+		&urlInfo.IsActive,
+		&urlInfo.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Not found — return a typed error for clarity
+			return nil, fmt.Errorf("no URL found for user ID %s and short URL %s: %w", userId.String(), shortUrl, err)
+		}
+		// Log or wrap unexpected DB error
+		return nil, fmt.Errorf("failed to fetch URL info from DB: %w", err)
+	}
+
+	return &urlInfo, nil
 }
