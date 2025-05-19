@@ -1,17 +1,20 @@
 package handlers
 
 import (
-	"U-235/middlewares"
+	"U-235/middleware"
 	"U-235/models"
 	"U-235/services"
 	"U-235/utils"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"net/http"
+	"strconv"
 )
 
 type UrlHandlers interface {
 	CreateUrlHandler(c echo.Context) error
+	GetUrlsHandler(c echo.Context) error
 }
 
 type UrlHandler struct {
@@ -43,7 +46,7 @@ func (u *UrlHandler) CreateUrlHandler(c echo.Context) error {
 	}
 
 	//Extract Claims from token for UserId
-	claims, err := middlewares.GetClaims(token)
+	claims, err := middleware.ValidateToken(token)
 	if err != nil {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -65,4 +68,37 @@ func (u *UrlHandler) CreateUrlHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	return c.JSON(http.StatusOK, res)
+}
+
+func (u *UrlHandler) GetUrlsHandler(c echo.Context) error {
+	// Get user ID from context (assuming it's set by authentication middleware)
+	userID, ok := c.Get("userID").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized access",
+		})
+	}
+
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+
+	// Parse active status filter if provided
+	var isActive *bool
+	if activeStr := c.QueryParam("active"); activeStr != "" {
+		active, err := strconv.ParseBool(activeStr)
+		if err == nil {
+			isActive = &active
+		}
+	}
+
+	// Call the service to get URLs
+	response, err := u.UrlService.GetUserUrls(c.Request().Context(), userID, page, limit, isActive)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to retrieve URLs: " + err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, response)
 }

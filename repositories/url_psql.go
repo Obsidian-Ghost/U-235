@@ -8,20 +8,27 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+	"gorm.io/gorm"
 )
 
 type UrlsPsql interface {
 	SaveUrl(ctx context.Context, UrlInfo *models.ShortenedUrlInfoReq) (*models.ShortenedUrlInfoRes, *models.PsqlRollback, error)
 	GetUrlInfoByUserIdAndShortUrl(ctx context.Context, userId uuid.UUID, shortUrl string) (*models.ShortenedUrlInfoRes, error)
 	DeleteUrlRecord(ctx context.Context, UserId uuid.UUID, UrlRecordId uuid.UUID) error
+	GetUserUrls(ctx context.Context, userID uuid.UUID, offset, limit int, isActive *bool) ([]models.ShortenedUrlInfoRes, error)
+	CountUserUrls(ctx context.Context, userID uuid.UUID, isActive *bool) (int64, error)
 }
 
 type UrlsPsqlImpl struct {
-	db *sql.DB
+	db     *sql.DB
+	gormDB *gorm.DB
 }
 
-func NewUrlsPsql(db *sql.DB) UrlsPsql {
-	return &UrlsPsqlImpl{db: db}
+func NewUrlsPsql(db *sql.DB, gormDB *gorm.DB) UrlsPsql {
+	return &UrlsPsqlImpl{
+		db:     db,
+		gormDB: gormDB,
+	}
 }
 
 func (u *UrlsPsqlImpl) DeleteUrlRecord(ctx context.Context, UserId uuid.UUID, UrlRecordId uuid.UUID) error {
@@ -36,7 +43,14 @@ func (u *UrlsPsqlImpl) SaveUrl(ctx context.Context, urlInfo *models.ShortenedUrl
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+
+	//Wrap error handling in closure - GoLand IDE suggestion
+	defer func(tx *sql.Tx) {
+		err := tx.Rollback()
+		if err != nil {
+
+		}
+	}(tx)
 
 	query := `
         INSERT INTO shortened_urls (
@@ -114,4 +128,50 @@ func (u *UrlsPsqlImpl) GetUrlInfoByUserIdAndShortUrl(ctx context.Context, userId
 	}
 
 	return &urlInfo, nil
+}
+
+func (u *UrlsPsqlImpl) GetUserUrls(ctx context.Context, userID uuid.UUID, offset, limit int, isActive *bool) ([]models.ShortenedUrlInfoRes, error) {
+	var urls []models.ShortenedUrlInfoRes
+
+	query := u.gormDB.WithContext(ctx).
+		Table("shortened_urls").
+		Where("user_id = ?", userID)
+
+	// Apply active status filter if provided
+	if isActive != nil {
+		query = query.Where("is_active = ?", *isActive)
+	}
+
+	// Apply pagination and order by creation date (newest first)
+	err := query.
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&urls).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return urls, nil
+}
+
+func (u *UrlsPsqlImpl) CountUserUrls(ctx context.Context, userID uuid.UUID, isActive *bool) (int64, error) {
+	var count int64
+
+	query := u.gormDB.WithContext(ctx).
+		Table("shortened_urls").
+		Where("user_id = ?", userID)
+
+	// Apply active status filter if provided
+	if isActive != nil {
+		query = query.Where("is_active = ?", *isActive)
+	}
+
+	err := query.Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }

@@ -8,6 +8,7 @@ import (
 	"U-235/utils"
 	"net/http"
 
+	CustomMiddleware "U-235/middleware"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -20,12 +21,13 @@ func (s *Server) RegisterRoutes() http.Handler {
 	//Dependencies Initialization
 	e.Validator = utils.NewValidator()
 	db := database.NewPsqlDB()
+	gormDB := database.NewGormPostgresDB()
 	redisDB, _ := database.NewRedisDatabase()
 	userRepo := repositories.NewUserRepo(db)
 	userService := services.NewUserService(userRepo)
 	userHandler := handlers.NewUserHandler(userService)
 
-	psqlRepo := repositories.NewUrlsPsql(db)
+	psqlRepo := repositories.NewUrlsPsql(db, gormDB)
 	redisRepo, _ := repositories.NewUrlRedis(redisDB)
 	urlService := services.NewShortUrlService(redisRepo, psqlRepo)
 	urlHandler := handlers.NewUrlHandler(urlService)
@@ -55,8 +57,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	// Block - User Routes
 	{
 		user := api.Group("/user")
+		user.Use(CustomMiddleware.AuthMiddleware)
 		//user.GET("/", handlers.GetUserHandler)
-		//user.GET("/urls", handlers.GetUrlsHandler)
+		user.GET("/urls", urlHandler.GetUrlsHandler)
 		user.POST("/urls", urlHandler.CreateUrlHandler)
 	}
 

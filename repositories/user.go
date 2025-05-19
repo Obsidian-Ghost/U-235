@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"U-235/middlewares"
+	"U-235/middleware"
 	"U-235/models"
 	"U-235/utils"
 	"context"
@@ -84,7 +84,7 @@ func (u *userRepo) UserLoginService(email, password string, ctx context.Context)
 		return "", errors.New("invalid email or password")
 	}
 
-	encodedToken, err := middlewares.CreateToken(userID)
+	encodedToken, err := middleware.CreateToken(userID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create token: %w", err)
 	}

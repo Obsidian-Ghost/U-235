@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"log"
 	"os"
 	"strconv"
@@ -57,6 +59,20 @@ func New() Service {
 func NewPsqlDB() *sql.DB {
 	New()
 	return dbInstance.db
+}
+
+func NewGormPostgresDB() *gorm.DB {
+	sqlDB := NewPsqlDB() // reuse existing db
+
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{
+		Conn: sqlDB,
+	}), &gorm.Config{})
+
+	if err != nil {
+		log.Fatalf("failed to initialize GORM with existing sql.DB: %v", err)
+	}
+
+	return gormDB
 }
 
 // Health checks the health of the database connection by pinging the database.

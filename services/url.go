@@ -16,6 +16,7 @@ var Domain = os.Getenv("DOMAIN")
 
 type UrlServices interface {
 	CreateUrlService(userID uuid.UUID, req *models.CreateShortUrlReq, ctx context.Context) (*models.ShortenedUrlInfoRes, error)
+	GetUserUrls(ctx context.Context, userID uuid.UUID, page, limit int, isActive *bool) (*models.PaginatedUrlsResponse, error)
 }
 
 type ShortUrlService struct {
@@ -67,4 +68,53 @@ func (r *ShortUrlService) CreateUrlService(userID uuid.UUID, req *models.CreateS
 		return nil, fmt.Errorf("failed to save url to Redis, rolled back DB: %w", redisErr)
 	}
 	return finalUrlRes, nil
+}
+
+func (r *ShortUrlService) GetUserUrls(ctx context.Context, userID uuid.UUID, page, limit int, isActive *bool) (*models.PaginatedUrlsResponse, error) {
+	// Set default pagination values if not provided
+	if page <= 0 {
+		page = 1
+	}
+
+	if limit <= 0 {
+		limit = 10
+	} else if limit > 100 {
+		// Cap the maximum limit to prevent excessive resource usage
+		limit = 100
+	}
+
+	// Calculate offset for pagination
+	offset := (page - 1) * limit
+
+	// Get total count of URLs for this user with the applied filter
+	totalCount, err := r.PsqlRepo.CountUserUrls(ctx, userID, isActive)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count user URLs: %w", err)
+	}
+
+	// Get paginated URLs for this user
+	urls, err := r.PsqlRepo.GetUserUrls(ctx, userID, offset, limit, isActive)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user URLs: %w", err)
+	}
+
+	// Calculate pagination metadata
+	totalPages := int((totalCount + int64(limit) - 1) / int64(limit))
+	hasNext := page < totalPages
+	hasPrevious := page > 1
+
+	// Create the response
+	response := &models.PaginatedUrlsResponse{
+		Urls: urls,
+		Meta: models.PaginationMeta{
+			CurrentPage: page,
+			TotalPages:  totalPages,
+			PageSize:    limit,
+			TotalCount:  totalCount,
+			HasNext:     hasNext,
+			HasPrevious: hasPrevious,
+		},
+	}
+
+	return response, nil
 }
