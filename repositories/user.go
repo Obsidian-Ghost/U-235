@@ -12,8 +12,9 @@ import (
 )
 
 type UserRepository interface {
-	UserRegistrationService(Name, email, passwordHashed string, ctx context.Context) (*models.User, error)
-	UserLoginService(email, password string, ctx context.Context) (string, error)
+	UserRegistration(Name, email, passwordHashed string, ctx context.Context) (*models.User, error)
+	UserLogin(email, password string, ctx context.Context) (string, error)
+	UserProfileService(userId uuid.UUID, ctx context.Context) (*models.UserProfile, error)
 }
 
 type userRepo struct {
@@ -26,7 +27,7 @@ func NewUserRepo(db *sql.DB) UserRepository {
 	}
 }
 
-func (u *userRepo) UserRegistrationService(name, email, passwordHashed string, ctx context.Context) (*models.User, error) {
+func (u *userRepo) UserRegistration(name, email, passwordHashed string, ctx context.Context) (*models.User, error) {
 	// Check if user already exists
 	var existingUser models.User
 	checkQuery := `SELECT id FROM users WHERE email = $1`
@@ -64,7 +65,7 @@ func (u *userRepo) UserRegistrationService(name, email, passwordHashed string, c
 	return &user, nil
 }
 
-func (u *userRepo) UserLoginService(email, password string, ctx context.Context) (string, error) {
+func (u *userRepo) UserLogin(email, password string, ctx context.Context) (string, error) {
 	query := `SELECT id, password FROM users WHERE email = $1`
 	var (
 		userID       uuid.UUID
@@ -73,7 +74,7 @@ func (u *userRepo) UserLoginService(email, password string, ctx context.Context)
 	// Query the database for the user with the provided email
 	err := u.db.QueryRowContext(ctx, query, email).Scan(&userID, &hashedPasswd)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return "", errors.New("invalid email or password")
 		}
 		return "", fmt.Errorf("database error: %w", err)
@@ -89,4 +90,22 @@ func (u *userRepo) UserLoginService(email, password string, ctx context.Context)
 		return "", fmt.Errorf("failed to create token: %w", err)
 	}
 	return encodedToken, nil
+}
+
+func (u *userRepo) UserProfileService(userId uuid.UUID, ctx context.Context) (*models.UserProfile, error) {
+	query := `SELECT name, email FROM users WHERE id=$1`
+
+	var profile models.UserProfile
+	err := u.db.QueryRowContext(ctx, query, userId).Scan(
+		&profile.Name,
+		&profile.Email,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("user not found")
+		}
+		return nil, fmt.Errorf("failed to fetch user profile: %w", err)
+	}
+	return &profile, nil
 }

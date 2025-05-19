@@ -6,11 +6,13 @@ import (
 	"U-235/utils"
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 )
 
 type UserServices interface {
 	UserRegistrationService(user models.UserRegister, ctx context.Context) (*models.User, error)
 	UserLoginService(login models.UserLogin, ctx context.Context) (string, error)
+	UserProfileService(userId uuid.UUID, ctx context.Context) (*models.UserProfile, error)
 }
 
 type UserService struct {
@@ -31,7 +33,7 @@ func (u *UserService) UserRegistrationService(user models.UserRegister, ctx cont
 	}
 
 	// Call the repository function with the hashed password
-	registeredUser, err := u.repo.UserRegistrationService(user.Name, user.Email, hashPassword, ctx)
+	registeredUser, err := u.repo.UserRegistration(user.Name, user.Email, hashPassword, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -42,9 +44,17 @@ func (u *UserService) UserRegistrationService(user models.UserRegister, ctx cont
 func (u *UserService) UserLoginService(user models.UserLogin, ctx context.Context) (string, error) {
 	email := user.Email
 	password := user.Password
-	token, err := u.repo.UserLoginService(email, password, ctx)
+	token, err := u.repo.UserLogin(email, password, ctx)
 	if err != nil {
 		return "", err
 	}
 	return token, nil
+}
+
+func (u *UserService) UserProfileService(userId uuid.UUID, ctx context.Context) (*models.UserProfile, error) {
+	res, err := u.repo.UserProfileService(userId, ctx)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }

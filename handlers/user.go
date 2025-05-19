@@ -4,6 +4,7 @@ import (
 	"U-235/models"
 	"U-235/services"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strings"
@@ -12,6 +13,7 @@ import (
 type UserHandlers interface {
 	UserRegistrationHandler(c echo.Context) error
 	UserLoginHandler(c echo.Context) error
+	UserProfileHandler(c echo.Context) error
 }
 
 type userHandler struct {
@@ -88,4 +90,15 @@ func (u *userHandler) UserLoginHandler(c echo.Context) error {
 		"token":   token,
 		"message": "User logged in successfully",
 	})
+}
+
+func (u *userHandler) UserProfileHandler(c echo.Context) error {
+	userId := c.Get("userID").(uuid.UUID)
+	ctx := c.Request().Context()
+
+	profile, err := u.UserService.UserProfileService(userId, ctx)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, profile)
 }
