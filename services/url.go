@@ -5,9 +5,12 @@ import (
 	"U-235/models"
 	"U-235/repositories"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"log"
+	"net/http"
 	"os"
 	"time"
 )
@@ -17,6 +20,7 @@ var Domain = os.Getenv("DOMAIN")
 type UrlServices interface {
 	CreateUrlService(userID uuid.UUID, req *models.CreateShortUrlReq, ctx context.Context) (*models.ShortenedUrlInfoRes, error)
 	GetUserUrls(ctx context.Context, userID uuid.UUID, page, limit int, isActive *bool) (*models.PaginatedUrlsResponse, error)
+	DeleteUrlService(DelReq *models.DeleteShortUrlReq, ctx context.Context) error
 }
 
 type ShortUrlService struct {
@@ -117,4 +121,55 @@ func (r *ShortUrlService) GetUserUrls(ctx context.Context, userID uuid.UUID, pag
 	}
 
 	return response, nil
+}
+
+func (r *ShortUrlService) DeleteUrlService(DelReq *models.DeleteShortUrlReq, ctx context.Context) error {
+	// First, check if the URL record exists at all (regardless of owner)
+	exists, err := r.PsqlRepo.UrlRecordExists(ctx, DelReq.UrlRecordId)
+	if err != nil {
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	if !exists {
+		return models.NewAppError("URL_NOT_FOUND", "The requested URL does not exist", http.StatusNotFound)
+	}
+
+	// Now check if this URL belongs to the requesting user
+	urlInfo, err := r.PsqlRepo.GetUrlInfoByUserIdAndUrlRecordId(ctx, DelReq.UserId, DelReq.UrlRecordId)
+	if err != nil {
+		// If no rows found, it means URL exists but belongs to another user
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.NewAppError("ACCESS_DENIED", "You do not have permission to delete this URL", http.StatusForbidden)
+		}
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	// URL belongs to the user, proceed with deletion
+	ok, err := r.RedisRepo.ExistsInRedis(ctx, urlInfo.OriginalUrl, urlInfo.ShortUrl)
+	if err != nil {
+		return fmt.Errorf("cache check failed: %w", err)
+	}
+
+	// if isActive, then it must be inside redis.
+	if urlInfo.IsActive && ok {
+		// make url inactive in psql
+		err = r.PsqlRepo.SetUrlState(ctx, urlInfo.UserId, urlInfo.Id, false)
+		if err != nil {
+			return models.NewAppError("DEACTIVATION_FAILED", "Failed to deactivate URL", http.StatusInternalServerError)
+		}
+
+		// delete url from redis
+		err = r.RedisRepo.DeleteKeys(ctx, urlInfo.OriginalUrl, urlInfo.ShortUrl)
+		if err != nil {
+			// Attempt rollback
+			rollbackErr := r.PsqlRepo.SetUrlState(ctx, urlInfo.UserId, urlInfo.Id, true)
+			if rollbackErr != nil {
+				log.Printf("Failed to rollback URL state: %v", rollbackErr)
+			}
+			return models.NewAppError("CACHE_DELETE_FAILED", "Failed to remove URL from cache", http.StatusInternalServerError)
+		}
+	}
+
+	log.Printf("Deactivating URL: userID=%s urlID=%s", urlInfo.UserId, urlInfo.Id)
+	return nil
 }

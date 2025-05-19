@@ -29,6 +29,11 @@ type CreateShortUrlReq struct {
 	CustomShortUrl string `json:"custom_short_url"` //Optional
 }
 
+type DeleteShortUrlReq struct {
+	UserId      uuid.UUID `json:"user_id"`
+	UrlRecordId uuid.UUID `json:"url_record_id"`
+}
+
 type PsqlRollback struct {
 	UserId      uuid.UUID `json:"user_id"`
 	UrlRecordId uuid.UUID `json:"url_record_id"`

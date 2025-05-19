@@ -14,9 +14,12 @@ import (
 type UrlsPsql interface {
 	SaveUrl(ctx context.Context, UrlInfo *models.ShortenedUrlInfoReq) (*models.ShortenedUrlInfoRes, *models.PsqlRollback, error)
 	GetUrlInfoByUserIdAndShortUrl(ctx context.Context, userId uuid.UUID, shortUrl string) (*models.ShortenedUrlInfoRes, error)
+	GetUrlInfoByUserIdAndUrlRecordId(ctx context.Context, userId uuid.UUID, urlRecordId uuid.UUID) (*models.ShortenedUrlInfoRes, error)
 	DeleteUrlRecord(ctx context.Context, UserId uuid.UUID, UrlRecordId uuid.UUID) error
 	GetUserUrls(ctx context.Context, userID uuid.UUID, offset, limit int, isActive *bool) ([]models.ShortenedUrlInfoRes, error)
 	CountUserUrls(ctx context.Context, userID uuid.UUID, isActive *bool) (int64, error)
+	SetUrlState(ctx context.Context, userId uuid.UUID, urlId uuid.UUID, isActive bool) error
+	UrlRecordExists(ctx context.Context, urlID uuid.UUID) (bool, error)
 }
 
 type UrlsPsqlImpl struct {
@@ -174,4 +177,59 @@ func (u *UrlsPsqlImpl) CountUserUrls(ctx context.Context, userID uuid.UUID, isAc
 	}
 
 	return count, nil
+}
+
+func (u *UrlsPsqlImpl) GetUrlInfoByUserIdAndUrlRecordId(ctx context.Context, userId uuid.UUID, urlRecordId uuid.UUID) (*models.ShortenedUrlInfoRes, error) {
+	query := `
+		SELECT id, user_id, original_url, short_url, expires_at, is_active, created_at
+		FROM shortened_urls
+		WHERE user_id = $1 AND id = $2;
+	`
+
+	var urlInfo models.ShortenedUrlInfoRes
+
+	err := u.db.QueryRowContext(ctx, query, userId, urlRecordId).Scan(
+		&urlInfo.Id,
+		&urlInfo.UserId,
+		&urlInfo.OriginalUrl,
+		&urlInfo.ShortUrl,
+		&urlInfo.ExpiresAt,
+		&urlInfo.IsActive,
+		&urlInfo.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Not found — return a typed error for clarity
+			return nil, fmt.Errorf("no URL found for user ID %s and short URL %s: %w", userId.String(), urlRecordId, err)
+		}
+		// Log or wrap unexpected DB error
+		return nil, fmt.Errorf("failed to fetch URL info from DB: %w", err)
+	}
+
+	return &urlInfo, nil
+}
+
+func (u *UrlsPsqlImpl) SetUrlState(ctx context.Context, userId uuid.UUID, urlId uuid.UUID, isActive bool) error {
+	query := `
+		UPDATE shortened_urls
+		SET is_active = $1
+		WHERE user_id = $2 AND id = $3
+	`
+	_, err := u.db.ExecContext(ctx, query, isActive, userId, urlId)
+	if err != nil {
+		return fmt.Errorf("failed to update URL state: %w", err)
+	}
+	return nil
+}
+
+func (u *UrlsPsqlImpl) UrlRecordExists(ctx context.Context, urlID uuid.UUID) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM short_urls WHERE id = $1)`
+
+	err := u.db.QueryRowContext(ctx, query, urlID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }

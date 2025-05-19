@@ -14,7 +14,8 @@ import (
 
 type UrlHandlers interface {
 	CreateUrlHandler(c echo.Context) error
-	GetUrlsHandler(c echo.Context) error
+	GetUrlHandler(c echo.Context) error
+	DeleteUrlHandler(c echo.Context) error
 }
 
 type UrlHandler struct {
@@ -70,7 +71,7 @@ func (u *UrlHandler) CreateUrlHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-func (u *UrlHandler) GetUrlsHandler(c echo.Context) error {
+func (u *UrlHandler) GetUrlHandler(c echo.Context) error {
 	// Get user ID from context (assuming it's set by authentication middleware)
 	userID, ok := c.Get("userID").(uuid.UUID)
 	if !ok {
@@ -101,4 +102,37 @@ func (u *UrlHandler) GetUrlsHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+func (u *UrlHandler) DeleteUrlHandler(c echo.Context) error {
+	var DelReq models.DeleteShortUrlReq
+	if err := c.Bind(&DelReq); err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request format")
+	}
+
+	if err := c.Validate(&DelReq); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid request payload: %v", err))
+	}
+
+	userID, ok := c.Get("userID").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized access",
+		})
+	}
+	DelReq.UserId = userID
+
+	ctx := c.Request().Context()
+
+	err := u.UrlService.DeleteUrlService(&DelReq, ctx)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to delete URL: " + err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "successfully deleted URL",
+	})
 }

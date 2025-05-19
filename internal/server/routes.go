@@ -54,26 +54,34 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	}
 
-	// Block - User Routes
+	// Block - URL Management Routes
 	{
-		user := api.Group("/user")
-		user.Use(CustomMiddleware.AuthMiddleware)
-		//user.GET("/", handlers.GetUserHandler)
-		user.GET("/urls", urlHandler.GetUrlsHandler)
-		user.POST("/urls", urlHandler.CreateUrlHandler)
+		urlRoutes := api.Group("/urls")
+		urlRoutes.Use(CustomMiddleware.AuthMiddleware)
+		urlRoutes.GET("", urlHandler.GetUrlHandler)     // List all URLs for authenticated user
+		urlRoutes.POST("", urlHandler.CreateUrlHandler) // Create new shortened URL
+		urlRoutes.DELETE("", urlHandler.DeleteUrlHandler)
 	}
 
-	//Block - Core
+	// Block - User Profile Routes
 	{
-		//e.GET("/:shortId",)
+		userRoutes := api.Group("/user")
+		userRoutes.Use(CustomMiddleware.AuthMiddleware)
+		//userRoutes.GET("/profile", userHandler.GetUserProfileHandler) // Get user name, email, and other profile data
+		//userRoutes.PUT("/profile", userHandler.UpdateUserProfileHandler) // Update user profile information
 	}
 
-	//Block - Auth
+	//Block - URL Redirect
+	{
+		//e.GET("/:shortId", urlHandler.RedirectHandler) // Redirect short URLs to original destination
+	}
+
+	//Block - Authentication
 	{
 		auth := api.Group("/auth")
 		auth.POST("/register", userHandler.UserRegistrationHandler)
 		auth.POST("/login", userHandler.UserLoginHandler)
-		//auth.POST("/reset-password",resetPassHandler)
+		//auth.POST("/forgot-password", userHandler.ForgotPasswordHandler)
 	}
 
 	return e
