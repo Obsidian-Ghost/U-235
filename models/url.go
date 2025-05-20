@@ -38,3 +38,8 @@ type PsqlRollback struct {
 	UserId      uuid.UUID `json:"user_id"`
 	UrlRecordId uuid.UUID `json:"url_record_id"`
 }
+
+type ExtendExpiry struct {
+	UrlId uuid.UUID `json:"url_id"`
+	Hours int       `json:"hours"`
+}

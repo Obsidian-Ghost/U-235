@@ -61,6 +61,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 		urlRoutes.GET("", urlHandler.GetUrlHandler)     // List all URLs for authenticated user
 		urlRoutes.POST("", urlHandler.CreateUrlHandler) // Create new shortened URL
 		urlRoutes.DELETE("", urlHandler.DeleteUrlHandler)
+		urlRoutes.POST("/expiry", urlHandler.ExtendExpiryHandler)
 	}
 
 	// Block - User Profile Routes

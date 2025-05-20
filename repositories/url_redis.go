@@ -14,6 +14,7 @@ type RedisRepo interface {
 	SaveUrl(ctx context.Context, originalUrl string, shortUrl string, time time.Duration) error
 	ExistsInRedis(ctx context.Context, originalUrl string, shortUrl string) (bool, error)
 	DeleteKeys(ctx context.Context, originalUrl string, shortUrl string) error
+	ExtendExpiry(ctx context.Context, originalUrl string, shortUrl string, duration time.Duration) error
 }
 
 type UrlRedis struct {
@@ -99,4 +100,36 @@ func (u *UrlRedis) DeleteKeys(ctx context.Context, originalUrl string, shortUrl 
 	}
 
 	return nil
+}
+
+func (u *UrlRedis) ExtendExpiry(ctx context.Context, originalUrl string, shortUrl string, duration time.Duration) error {
+	// Handle shortUrl expiry
+	ttl, err := u.RedisClient.TTL(ctx, shortUrl).Result()
+	if err != nil {
+		return err
+	}
+
+	if ttl < 0 {
+		err = u.RedisClient.Expire(ctx, shortUrl, duration).Err()
+	} else {
+		newExpiry := ttl + duration
+		err = u.RedisClient.Expire(ctx, shortUrl, newExpiry).Err()
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// Handle originalUrl expiry
+	ttl2, err := u.RedisClient.TTL(ctx, originalUrl).Result()
+	if err != nil {
+		return err
+	}
+
+	if ttl2 < 0 {
+		return u.RedisClient.Expire(ctx, originalUrl, duration).Err()
+	} else {
+		newExpiry2 := ttl2 + duration
+		return u.RedisClient.Expire(ctx, originalUrl, newExpiry2).Err()
+	}
 }

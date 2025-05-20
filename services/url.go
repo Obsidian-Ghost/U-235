@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
 	"os"
@@ -21,6 +22,7 @@ type UrlServices interface {
 	CreateUrlService(userID uuid.UUID, req *models.CreateShortUrlReq, ctx context.Context) (*models.ShortenedUrlInfoRes, error)
 	GetUserUrls(ctx context.Context, userID uuid.UUID, page, limit int, isActive *bool) (*models.PaginatedUrlsResponse, error)
 	DeleteUrlService(DelReq *models.DeleteShortUrlReq, ctx context.Context) error
+	ExtendExpiryService(userId uuid.UUID, Req *models.ExtendExpiry, ctx context.Context) error
 }
 
 type ShortUrlService struct {
@@ -171,5 +173,31 @@ func (r *ShortUrlService) DeleteUrlService(DelReq *models.DeleteShortUrlReq, ctx
 	}
 
 	log.Printf("Deactivating URL: userID=%s urlID=%s", urlInfo.UserId, urlInfo.Id)
+	return nil
+}
+
+func (r *ShortUrlService) ExtendExpiryService(userId uuid.UUID, Req *models.ExtendExpiry, ctx context.Context) error {
+	// First update the PostgreSQL database (this will also validate ownership)
+	err := r.PsqlRepo.ExtendExpiry(ctx, userId, Req.UrlId, Req.Hours)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return echo.NewHTTPError(http.StatusNotFound, "URL not found or you don't have permission")
+		}
+		return err
+	}
+
+	// Now get the URL info to update Redis
+	urlInfo, err := r.PsqlRepo.GetUrlInfoByUserIdAndUrlRecordId(ctx, userId, Req.UrlId)
+	if err != nil {
+		return err
+	}
+
+	// Update Redis expiry
+	duration := time.Duration(Req.Hours) * time.Hour
+	err = r.RedisRepo.ExtendExpiry(ctx, urlInfo.OriginalUrl, urlInfo.ShortUrl, duration)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

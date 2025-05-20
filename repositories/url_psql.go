@@ -20,6 +20,7 @@ type UrlsPsql interface {
 	CountUserUrls(ctx context.Context, userID uuid.UUID, isActive *bool) (int64, error)
 	SetUrlState(ctx context.Context, userId uuid.UUID, urlId uuid.UUID, isActive bool) error
 	UrlRecordExists(ctx context.Context, urlID uuid.UUID) (bool, error)
+	ExtendExpiry(ctx context.Context, userId uuid.UUID, urlId uuid.UUID, hours int) error
 }
 
 type UrlsPsqlImpl struct {
@@ -232,4 +233,34 @@ func (u *UrlsPsqlImpl) UrlRecordExists(ctx context.Context, urlID uuid.UUID) (bo
 	}
 
 	return exists, nil
+}
+
+func (u *UrlsPsqlImpl) ExtendExpiry(ctx context.Context, userId uuid.UUID, urlId uuid.UUID, hours int) error {
+	tx, err := u.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	query := `UPDATE shortened_urls SET expires_at = expires_at + make_interval(hours => $1) WHERE id = $2 AND user_id = $3`
+
+	result, err := tx.ExecContext(ctx, query, hours, urlId, userId)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return tx.Commit()
 }

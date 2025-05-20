@@ -16,6 +16,7 @@ type UrlHandlers interface {
 	CreateUrlHandler(c echo.Context) error
 	GetUrlHandler(c echo.Context) error
 	DeleteUrlHandler(c echo.Context) error
+	ExtendExpiryHandler(c echo.Context) error
 }
 
 type UrlHandler struct {
@@ -134,5 +135,36 @@ func (u *UrlHandler) DeleteUrlHandler(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "successfully deleted URL",
+	})
+}
+
+func (u *UrlHandler) ExtendExpiryHandler(c echo.Context) error {
+	var ExtendExpiry models.ExtendExpiry
+	err := c.Bind(&ExtendExpiry)
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request format")
+	}
+
+	err = c.Validate(&ExtendExpiry)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid request payload: %v", err))
+	}
+	userId, ok := c.Get("userID").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized access",
+		})
+	}
+	ctx := c.Request().Context()
+
+	err = u.UrlService.ExtendExpiryService(userId, &ExtendExpiry, ctx)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "failed to extend URL: " + err.Error(),
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Extended URL expiry successfully!",
 	})
 }
