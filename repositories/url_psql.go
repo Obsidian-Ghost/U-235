@@ -225,7 +225,7 @@ func (u *UrlsPsqlImpl) SetUrlState(ctx context.Context, userId uuid.UUID, urlId 
 
 func (u *UrlsPsqlImpl) UrlRecordExists(ctx context.Context, urlID uuid.UUID) (bool, error) {
 	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM short_urls WHERE id = $1)`
+	query := `SELECT EXISTS(SELECT 1 FROM shortened_urls WHERE id = $1)`
 
 	err := u.db.QueryRowContext(ctx, query, urlID).Scan(&exists)
 	if err != nil {

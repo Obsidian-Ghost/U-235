@@ -107,14 +107,6 @@ func (u *UrlHandler) GetUrlHandler(c echo.Context) error {
 
 func (u *UrlHandler) DeleteUrlHandler(c echo.Context) error {
 	var DelReq models.DeleteShortUrlReq
-	if err := c.Bind(&DelReq); err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request format")
-	}
-
-	if err := c.Validate(&DelReq); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid request payload: %v", err))
-	}
 
 	userID, ok := c.Get("userID").(uuid.UUID)
 	if !ok {
@@ -124,9 +116,20 @@ func (u *UrlHandler) DeleteUrlHandler(c echo.Context) error {
 	}
 	DelReq.UserId = userID
 
+	paramStr := c.Param("urlId")
+	paramUUID, err := uuid.Parse(paramStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid Url UUID format"})
+	}
+	DelReq.UrlRecordId = paramUUID
+
+	if err := c.Validate(&DelReq); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid request payload: %v", err))
+	}
+
 	ctx := c.Request().Context()
 
-	err := u.UrlService.DeleteUrlService(&DelReq, ctx)
+	err = u.UrlService.DeleteUrlService(&DelReq, ctx)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "failed to delete URL: " + err.Error(),
@@ -165,6 +168,6 @@ func (u *UrlHandler) ExtendExpiryHandler(c echo.Context) error {
 		})
 	}
 	return c.JSON(http.StatusOK, map[string]string{
-		"message": "Extended URL expiry successfully!",
+		"message": fmt.Sprintf("Expiry extended by %d hour(s).", ExtendExpiry.Hours),
 	})
 }

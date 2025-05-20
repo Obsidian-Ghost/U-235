@@ -60,7 +60,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 		urlRoutes.Use(CustomMiddleware.AuthMiddleware)
 		urlRoutes.GET("", urlHandler.GetUrlHandler)     // List all URLs for authenticated user
 		urlRoutes.POST("", urlHandler.CreateUrlHandler) // Create new shortened URL
-		urlRoutes.DELETE("", urlHandler.DeleteUrlHandler)
+		urlRoutes.DELETE("/:urlId", urlHandler.DeleteUrlHandler)
 		urlRoutes.POST("/expiry", urlHandler.ExtendExpiryHandler)
 	}
 

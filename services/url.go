@@ -16,8 +16,6 @@ import (
 	"time"
 )
 
-var Domain = os.Getenv("DOMAIN")
-
 type UrlServices interface {
 	CreateUrlService(userID uuid.UUID, req *models.CreateShortUrlReq, ctx context.Context) (*models.ShortenedUrlInfoRes, error)
 	GetUserUrls(ctx context.Context, userID uuid.UUID, page, limit int, isActive *bool) (*models.PaginatedUrlsResponse, error)
@@ -38,6 +36,7 @@ func NewShortUrlService(repo repositories.RedisRepo, psql repositories.UrlsPsql)
 }
 
 func (r *ShortUrlService) CreateUrlService(userID uuid.UUID, req *models.CreateShortUrlReq, ctx context.Context) (*models.ShortenedUrlInfoRes, error) {
+	var Domain = os.Getenv("DOMAIN")
 	CustomUrlTag := req.CustomShortUrl
 	urlInfo := models.ShortenedUrlInfoReq{
 		UserId:      userID,
