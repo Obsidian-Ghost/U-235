@@ -191,6 +191,10 @@ func (r *ShortUrlService) ExtendExpiryService(userId uuid.UUID, Req *models.Exte
 		return err
 	}
 
+	if !urlInfo.IsActive {
+		return errors.New("URL is Inactive or Deleted")
+	}
+
 	// Update Redis expiry
 	duration := time.Duration(Req.Hours) * time.Hour
 	err = r.RedisRepo.ExtendExpiry(ctx, urlInfo.OriginalUrl, urlInfo.ShortUrl, duration)

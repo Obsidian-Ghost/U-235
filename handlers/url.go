@@ -163,9 +163,7 @@ func (u *UrlHandler) ExtendExpiryHandler(c echo.Context) error {
 
 	err = u.UrlService.ExtendExpiryService(userId, &ExtendExpiry, ctx)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to extend URL: " + err.Error(),
-		})
+		return c.JSON(http.StatusInternalServerError, err)
 	}
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": fmt.Sprintf("Expiry extended by %d hour(s).", ExtendExpiry.Hours),
