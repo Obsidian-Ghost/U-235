@@ -28,3 +28,8 @@ type UserProfile struct {
 	Name  string `json:"name" validate:"required"`
 	Email string `json:"email" validate:"required,email"`
 }
+
+type AuthResponse struct {
+	User  User   `json:"user"`
+	Token string `json:"token"`
+}

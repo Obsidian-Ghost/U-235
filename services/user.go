@@ -1,6 +1,7 @@
 package services
 
 import (
+	"U-235/middleware"
 	"U-235/models"
 	"U-235/repositories"
 	"U-235/utils"
@@ -11,7 +12,7 @@ import (
 
 type UserServices interface {
 	UserRegistrationService(user models.UserRegister, ctx context.Context) (*models.User, error)
-	UserLoginService(login models.UserLogin, ctx context.Context) (string, error)
+	UserLoginService(login models.UserLogin, ctx context.Context) (*models.AuthResponse, error)
 	UserProfileService(userId uuid.UUID, ctx context.Context) (*models.UserProfile, error)
 }
 
@@ -41,14 +42,32 @@ func (u *UserService) UserRegistrationService(user models.UserRegister, ctx cont
 	return registeredUser, nil
 }
 
-func (u *UserService) UserLoginService(user models.UserLogin, ctx context.Context) (string, error) {
+func (u *UserService) UserLoginService(user models.UserLogin, ctx context.Context) (*models.AuthResponse, error) {
 	email := user.Email
 	password := user.Password
-	token, err := u.repo.UserLogin(email, password, ctx)
+
+	// Get user ID from repo
+	userID, err := u.repo.UserLogin(email, password, ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return token, nil
+
+	// Get full user details
+	userDetails, err := u.repo.GetUserByID(userID, ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user details: %w", err)
+	}
+
+	// Generate token
+	token, err := middleware.CreateToken(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token: %w", err)
+	}
+
+	return &models.AuthResponse{
+		User:  *userDetails,
+		Token: token,
+	}, nil
 }
 
 func (u *UserService) UserProfileService(userId uuid.UUID, ctx context.Context) (*models.UserProfile, error) {

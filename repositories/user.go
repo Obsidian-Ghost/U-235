@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"U-235/middleware"
 	"U-235/models"
 	"U-235/utils"
 	"context"
@@ -13,8 +12,9 @@ import (
 
 type UserRepository interface {
 	UserRegistration(Name, email, passwordHashed string, ctx context.Context) (*models.User, error)
-	UserLogin(email, password string, ctx context.Context) (string, error)
+	UserLogin(email, password string, ctx context.Context) (uuid.UUID, error)
 	UserProfileService(userId uuid.UUID, ctx context.Context) (*models.UserProfile, error)
+	GetUserByID(userID uuid.UUID, ctx context.Context) (*models.User, error)
 }
 
 type userRepo struct {
@@ -65,31 +65,45 @@ func (u *userRepo) UserRegistration(name, email, passwordHashed string, ctx cont
 	return &user, nil
 }
 
-func (u *userRepo) UserLogin(email, password string, ctx context.Context) (string, error) {
+func (u *userRepo) UserLogin(email, password string, ctx context.Context) (uuid.UUID, error) {
 	query := `SELECT id, password FROM users WHERE email = $1`
 	var (
 		userID       uuid.UUID
 		hashedPasswd string
 	)
-	// Query the database for the user with the provided email
+
 	err := u.db.QueryRowContext(ctx, query, email).Scan(&userID, &hashedPasswd)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", errors.New("invalid email or password")
+			return uuid.Nil, errors.New("invalid email or password")
 		}
-		return "", fmt.Errorf("database error: %w", err)
-	}
-	// Compare the provided password with the hashed password from DB
-	err = utils.VerifyPassword(hashedPasswd, password)
-	if err != nil {
-		return "", errors.New("invalid email or password")
+		return uuid.Nil, fmt.Errorf("database error: %w", err)
 	}
 
-	encodedToken, err := middleware.CreateToken(userID)
+	err = utils.VerifyPassword(hashedPasswd, password)
 	if err != nil {
-		return "", fmt.Errorf("failed to create token: %w", err)
+		return uuid.Nil, errors.New("invalid email or password")
 	}
-	return encodedToken, nil
+
+	return userID, nil
+}
+
+func (u *userRepo) GetUserByID(userID uuid.UUID, ctx context.Context) (*models.User, error) {
+	query := `SELECT id, name, email, created_at, updated_at FROM users WHERE id = $1`
+	var user models.User
+
+	err := u.db.QueryRowContext(ctx, query, userID).Scan(
+		&user.Id,
+		&user.Name,
+		&user.Email,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("database error: %w", err)
+	}
+
+	return &user, nil
 }
 
 func (u *userRepo) UserProfileService(userId uuid.UUID, ctx context.Context) (*models.UserProfile, error) {

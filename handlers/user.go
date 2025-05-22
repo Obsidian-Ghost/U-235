@@ -79,17 +79,12 @@ func (u *userHandler) UserLoginHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid request payload: %v", err))
 	}
 	ctx := c.Request().Context()
-	token, err := u.UserService.UserLoginService(user, ctx)
+	authResponse, err := u.UserService.UserLoginService(user, ctx)
 	if err != nil {
 		c.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 	}
-
-	// Return token in the response
-	return c.JSON(http.StatusOK, map[string]string{
-		"token":   token,
-		"message": "User logged in successfully",
-	})
+	return c.JSON(http.StatusOK, authResponse)
 }
 
 func (u *userHandler) UserProfileHandler(c echo.Context) error {
