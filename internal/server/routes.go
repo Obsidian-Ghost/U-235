@@ -69,12 +69,11 @@ func (s *Server) RegisterRoutes() http.Handler {
 		userRoutes := api.Group("/user")
 		userRoutes.Use(CustomMiddleware.AuthMiddleware)
 		userRoutes.GET("/profile", userHandler.UserProfileHandler) // Get user name, email, and other profile data
-		//userRoutes.PUT("/profile", userHandler.UpdateUserProfileHandler) // Update user profile information
 	}
 
 	//Block - URL Redirect
 	{
-		//e.GET("/:shortId", urlHandler.RedirectHandler) // Redirect short URLs to original destination
+		e.GET("/:shortId", urlHandler.RedirectHandler, CustomMiddleware.UrlCache) // Redirect short URLs to original destination
 	}
 
 	//Block - Authentication

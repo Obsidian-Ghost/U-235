@@ -17,6 +17,7 @@ type UrlHandlers interface {
 	GetUrlHandler(c echo.Context) error
 	DeleteUrlHandler(c echo.Context) error
 	ExtendExpiryHandler(c echo.Context) error
+	RedirectHandler(c echo.Context) error
 }
 
 type UrlHandler struct {
@@ -168,4 +169,19 @@ func (u *UrlHandler) ExtendExpiryHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": fmt.Sprintf("Expiry extended by %d hour(s).", ExtendExpiry.Hours),
 	})
+}
+
+func (u *UrlHandler) RedirectHandler(c echo.Context) error {
+	shortID := c.Param("shortId")
+	if shortID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Missing short URL"})
+	}
+
+	// Get original URL from service
+	originalURL, err := u.UrlService.GetOriginalUrl(c.Request().Context(), shortID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "URL not found"})
+	}
+
+	return c.Redirect(http.StatusMovedPermanently, originalURL)
 }

@@ -21,6 +21,7 @@ type UrlServices interface {
 	GetUserUrls(ctx context.Context, userID uuid.UUID, page, limit int, isActive *bool) (*models.PaginatedUrlsResponse, error)
 	DeleteUrlService(DelReq *models.DeleteShortUrlReq, ctx context.Context) error
 	ExtendExpiryService(userId uuid.UUID, Req *models.ExtendExpiry, ctx context.Context) error
+	GetOriginalUrl(ctx context.Context, shortUrl string) (string, error)
 }
 
 type ShortUrlService struct {
@@ -203,4 +204,12 @@ func (r *ShortUrlService) ExtendExpiryService(userId uuid.UUID, Req *models.Exte
 	}
 
 	return nil
+}
+
+func (r *ShortUrlService) GetOriginalUrl(ctx context.Context, shortUrl string) (string, error) {
+	original, exists := r.RedisRepo.GetOriginalUrl(ctx, shortUrl)
+	if !exists {
+		return "", errors.New("URL not found in cache")
+	}
+	return original, nil
 }
