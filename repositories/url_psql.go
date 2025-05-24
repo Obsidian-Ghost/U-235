@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
+	"log"
 )
 
 type UrlsPsql interface {
@@ -16,11 +17,13 @@ type UrlsPsql interface {
 	GetUrlInfoByUserIdAndShortUrl(ctx context.Context, userId uuid.UUID, shortUrl string) (*models.ShortenedUrlInfoRes, error)
 	GetUrlInfoByUserIdAndUrlRecordId(ctx context.Context, userId uuid.UUID, urlRecordId uuid.UUID) (*models.ShortenedUrlInfoRes, error)
 	DeleteUrlRecord(ctx context.Context, UserId uuid.UUID, UrlRecordId uuid.UUID) error
+	SoftDeleteUrl(ctx context.Context, userId uuid.UUID, urlId uuid.UUID) error
 	GetUserUrls(ctx context.Context, userID uuid.UUID, offset, limit int, isActive *bool) ([]models.ShortenedUrlInfoRes, error)
 	CountUserUrls(ctx context.Context, userID uuid.UUID, isActive *bool) (int64, error)
 	SetUrlState(ctx context.Context, userId uuid.UUID, urlId uuid.UUID, isActive bool) error
 	UrlRecordExists(ctx context.Context, urlID uuid.UUID) (bool, error)
 	ExtendExpiry(ctx context.Context, userId uuid.UUID, urlId uuid.UUID, hours int) error
+	MarkUrlAsExpired(ctx context.Context, shortUrl string) error
 }
 
 type UrlsPsqlImpl struct {
@@ -35,10 +38,34 @@ func NewUrlsPsql(db *sql.DB, gormDB *gorm.DB) UrlsPsql {
 	}
 }
 
+// DeleteUrlRecord - Used only for rollback purposes when creating a new short URL, in case the operation fails.
 func (u *UrlsPsqlImpl) DeleteUrlRecord(ctx context.Context, UserId uuid.UUID, UrlRecordId uuid.UUID) error {
 	query := `DELETE FROM shortened_urls WHERE user_id = $1 AND id = $2`
 	_, err := u.db.ExecContext(ctx, query, UserId, UrlRecordId)
 	return err
+}
+
+func (u *UrlsPsqlImpl) SoftDeleteUrl(ctx context.Context, userId uuid.UUID, urlId uuid.UUID) error {
+	query := `
+       UPDATE shortened_urls
+       SET is_active = false, expires_at = NOW()
+       WHERE user_id = $1 AND id = $2
+    `
+	result, err := u.db.ExecContext(ctx, query, userId, urlId)
+	if err != nil {
+		return fmt.Errorf("failed to soft delete URL: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no URL found to delete")
+	}
+
+	return nil
 }
 
 func (u *UrlsPsqlImpl) SaveUrl(ctx context.Context, urlInfo *models.ShortenedUrlInfoReq) (*models.ShortenedUrlInfoRes, *models.PsqlRollback, error) {
@@ -263,4 +290,29 @@ func (u *UrlsPsqlImpl) ExtendExpiry(ctx context.Context, userId uuid.UUID, urlId
 	}
 
 	return tx.Commit()
+}
+
+func (u *UrlsPsqlImpl) MarkUrlAsExpired(ctx context.Context, shortUrl string) error {
+	query := `
+        UPDATE shortened_urls 
+        SET is_active = false, 
+            expires_at = NOW() 
+        WHERE short_url = $1 AND is_active = true
+    `
+
+	result, err := u.db.ExecContext(ctx, query, shortUrl)
+	if err != nil {
+		return fmt.Errorf("failed to mark URL as expired: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		log.Printf("No active URL found for shortUrl: %s", shortUrl)
+	}
+
+	return nil
 }

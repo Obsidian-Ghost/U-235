@@ -19,7 +19,7 @@ import (
 type UrlServices interface {
 	CreateUrlService(userID uuid.UUID, req *models.CreateShortUrlReq, ctx context.Context) (*models.ShortenedUrlInfoRes, error)
 	GetUserUrls(ctx context.Context, userID uuid.UUID, page, limit int, isActive *bool) (*models.PaginatedUrlsResponse, error)
-	DeleteUrlService(DelReq *models.DeleteShortUrlReq, ctx context.Context) error
+	SoftDeleteUrlService(DelReq *models.DeleteShortUrlReq, ctx context.Context) error
 	ExtendExpiryService(userId uuid.UUID, Req *models.ExtendExpiry, ctx context.Context) error
 	GetOriginalUrl(ctx context.Context, shortUrl string) (string, error)
 }
@@ -125,7 +125,7 @@ func (r *ShortUrlService) GetUserUrls(ctx context.Context, userID uuid.UUID, pag
 	return response, nil
 }
 
-func (r *ShortUrlService) DeleteUrlService(DelReq *models.DeleteShortUrlReq, ctx context.Context) error {
+func (r *ShortUrlService) SoftDeleteUrlService(DelReq *models.DeleteShortUrlReq, ctx context.Context) error {
 	// First, check if the URL record exists at all (regardless of owner)
 	exists, err := r.PsqlRepo.UrlRecordExists(ctx, DelReq.UrlRecordId)
 	if err != nil {
@@ -146,33 +146,38 @@ func (r *ShortUrlService) DeleteUrlService(DelReq *models.DeleteShortUrlReq, ctx
 		return fmt.Errorf("database error: %w", err)
 	}
 
-	// URL belongs to the user, proceed with deletion
-	ok, err := r.RedisRepo.ExistsInRedis(ctx, urlInfo.OriginalUrl, urlInfo.ShortUrl)
+	ok, err := r.RedisRepo.ExistsInRedis(ctx, urlInfo.ShortUrl)
 	if err != nil {
-		return fmt.Errorf("cache check failed: %w", err)
+		return models.NewAppError("ACTIVE_URL_NOT_FOUND", "The requested URL does not exist", http.StatusNotFound)
 	}
 
 	// if isActive, then it must be inside redis.
 	if urlInfo.IsActive && ok {
-		// make url inactive in psql
-		err = r.PsqlRepo.SetUrlState(ctx, urlInfo.UserId, urlInfo.Id, false)
+		// Soft delete: deactivate URL and set expiration to current time
+		err = r.PsqlRepo.SoftDeleteUrl(ctx, urlInfo.UserId, urlInfo.Id)
 		if err != nil {
-			return models.NewAppError("DEACTIVATION_FAILED", "Failed to deactivate URL", http.StatusInternalServerError)
+			return models.NewAppError("DEACTIVATION_FAILED", "Failed to deactivate the URL", http.StatusInternalServerError)
 		}
 
 		// delete url from redis
-		err = r.RedisRepo.DeleteKeys(ctx, urlInfo.OriginalUrl, urlInfo.ShortUrl)
+		err = r.RedisRepo.DeleteKeys(ctx, urlInfo.ShortUrl)
 		if err != nil {
-			// Attempt rollback
+			// Attempt rollback - reactivate the URL
 			rollbackErr := r.PsqlRepo.SetUrlState(ctx, urlInfo.UserId, urlInfo.Id, true)
 			if rollbackErr != nil {
 				log.Printf("Failed to rollback URL state: %v", rollbackErr)
 			}
 			return models.NewAppError("CACHE_DELETE_FAILED", "Failed to remove URL from cache", http.StatusInternalServerError)
 		}
+	} else if urlInfo.IsActive {
+		// URL is active but not in Redis, just soft delete in database
+		err = r.PsqlRepo.SoftDeleteUrl(ctx, urlInfo.UserId, urlInfo.Id)
+		if err != nil {
+			return models.NewAppError("SOFT_DELETE_FAILED", "Failed to soft delete URL", http.StatusInternalServerError)
+		}
 	}
+	// If URL is already inactive, no action needed
 
-	log.Printf("Deactivating URL: userID=%s urlID=%s", urlInfo.UserId, urlInfo.Id)
 	return nil
 }
 

@@ -130,7 +130,7 @@ func (u *UrlHandler) DeleteUrlHandler(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	err = u.UrlService.DeleteUrlService(&DelReq, ctx)
+	err = u.UrlService.SoftDeleteUrlService(&DelReq, ctx)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "failed to delete URL: " + err.Error(),

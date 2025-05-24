@@ -6,6 +6,8 @@ import (
 	"U-235/repositories"
 	"U-235/services"
 	"U-235/utils"
+	"context"
+	"log"
 	"net/http"
 
 	CustomMiddleware "U-235/middleware"
@@ -31,6 +33,17 @@ func (s *Server) RegisterRoutes() http.Handler {
 	redisRepo, _ := repositories.NewUrlRedis(redisDB)
 	urlService := services.NewShortUrlService(redisRepo, psqlRepo)
 	urlHandler := handlers.NewUrlHandler(urlService)
+
+	// Add expiration service initialization
+	expirationService := services.NewRedisExpirationService(redisDB, psqlRepo)
+	ctx := context.Background()
+
+	// Initialize and start expiration handler
+	if err := expirationService.InitializeKeyspaceNotifications(ctx); err != nil {
+		log.Printf("Warning: Failed to initialize keyspace notifications: %v", err)
+	} else {
+		expirationService.StartExpirationListener(ctx)
+	}
 
 	// Global API config
 	api := e.Group("/api")
