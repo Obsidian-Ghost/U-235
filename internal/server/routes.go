@@ -45,57 +45,57 @@ func (s *Server) RegisterRoutes() http.Handler {
 		expirationService.StartExpirationListener(ctx)
 	}
 
-	// Global API config
+	// Global middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{"https://*", "http://*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
+
+	// IMPORTANT: Register specific routes FIRST before the catch-all route
+
+	// Health and system routes
+	e.GET("/", s.HelloWorldHandler)
+	e.GET("/health", s.healthHandler)
+
+	// Global API config - All API routes under /api
 	api := e.Group("/api")
 
-	// Block - CORS and Health
-	{
-		e.Use(middleware.Logger())
-		e.Use(middleware.Recover())
-
-		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-			AllowOrigins:     []string{"https://*", "http://*"},
-			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-			AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-			AllowCredentials: true,
-			MaxAge:           300,
-		}))
-
-		e.GET("/", s.HelloWorldHandler)
-
-		e.GET("/health", s.healthHandler)
-
-	}
-
-	// Block - URL Management Routes
-	{
-		urlRoutes := api.Group("/urls")
-		urlRoutes.Use(CustomMiddleware.AuthMiddleware)
-		urlRoutes.GET("", urlHandler.GetUrlHandler)     // List all URLs for authenticated user
-		urlRoutes.POST("", urlHandler.CreateUrlHandler) // Create new shortened URL
-		urlRoutes.DELETE("/:urlId", urlHandler.DeleteUrlHandler)
-		urlRoutes.POST("/expiry", urlHandler.ExtendExpiryHandler)
-	}
-
-	// Block - User Profile Routes
-	{
-		userRoutes := api.Group("/user")
-		userRoutes.Use(CustomMiddleware.AuthMiddleware)
-		userRoutes.GET("/profile", userHandler.UserProfileHandler) // Get user name, email, and other profile data
-	}
-
-	//Block - URL Redirect
-	{
-		e.GET("/:shortId", urlHandler.RedirectHandler, CustomMiddleware.UrlCache) // Redirect short URLs to original destination
-	}
-
-	//Block - Authentication
+	// Authentication routes
 	{
 		auth := api.Group("/auth")
 		auth.POST("/register", userHandler.UserRegistrationHandler)
 		auth.POST("/login", userHandler.UserLoginHandler)
-		//auth.POST("/forgot-password", userHandler.ForgotPasswordHandler)
+		// auth.POST("/forgot-password", userHandler.ForgotPasswordHandler)
 	}
+
+	// URL Management Routes (authenticated)
+	{
+		urlRoutes := api.Group("/urls")
+		urlRoutes.Use(CustomMiddleware.AuthMiddleware)
+		urlRoutes.GET("", urlHandler.GetUrlHandler)
+		urlRoutes.POST("", urlHandler.CreateUrlHandler)
+		urlRoutes.DELETE("/:urlId", urlHandler.DeleteUrlHandler)
+		urlRoutes.POST("/expiry", urlHandler.ExtendExpiryHandler)
+	}
+
+	// User Profile Routes (authenticated)
+	{
+		userRoutes := api.Group("/user")
+		userRoutes.Use(CustomMiddleware.AuthMiddleware)
+		userRoutes.GET("/profile", userHandler.UserProfileHandler)
+	}
+
+	// CRITICAL: Register the catch-all route LAST
+	// This ensures all specific routes are matched first
+	e.GET("/:shortId", urlHandler.RedirectHandler,
+		CustomMiddleware.ValidateShortId,
+		CustomMiddleware.UrlCache,
+	)
 
 	return e
 }

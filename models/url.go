@@ -41,5 +41,5 @@ type PsqlRollback struct {
 
 type ExtendExpiry struct {
 	UrlId uuid.UUID `json:"url_id"`
-	Hours int       `json:"hours"`
+	Hours int       `json:"hours" validate:"required,lt=73"`
 }

@@ -16,9 +16,26 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_SCHEMA: ${DB_SCHEMA}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_DB_DATABASE: ${REDIS_DB_DATABASE}
+      REDIS_DB_ADDR: ${REDIS_DB_ADDR}
+      REDIS_DB_PASS: ${REDIS_DB_PASS}
+      REDIS_DB_NUMBER: ${REDIS_DB_NUMBER}
+      REDIS_DB_PROTOCOL: ${REDIS_DB_PROTOCOL}
+      DOMAIN: ${DOMAIN}
     depends_on:
       psql:
         condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - blueprint
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_DB_PASS}
+    ports:
+      - "6379:6379"
     networks:
       - blueprint
   psql:

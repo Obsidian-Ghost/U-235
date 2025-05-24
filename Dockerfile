@@ -7,9 +7,10 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o main cmd/api/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main cmd/api/main.go
 
 FROM alpine:3.20.1 AS prod
+RUN apk --no-cache add ca-certificates
 WORKDIR /app
 COPY --from=build /app/main /app/main
 EXPOSE ${PORT}
