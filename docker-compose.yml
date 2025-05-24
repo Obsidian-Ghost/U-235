@@ -17,11 +17,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_SCHEMA: ${DB_SCHEMA}
       JWT_SECRET: ${JWT_SECRET}
-      REDIS_DB_DATABASE: ${REDIS_DB_DATABASE}
-      REDIS_DB_ADDR: ${REDIS_DB_ADDR}
-      REDIS_DB_PASS: ${REDIS_DB_PASS}
-      REDIS_DB_NUMBER: ${REDIS_DB_NUMBER}
-      REDIS_DB_PROTOCOL: ${REDIS_DB_PROTOCOL}
+      REDIS_URL: ${REDIS_URL}
       DOMAIN: ${DOMAIN}
     depends_on:
       psql:
@@ -30,35 +26,3 @@ services:
         condition: service_started
     networks:
       - blueprint
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_DB_PASS}
-    ports:
-      - "6379:6379"
-    networks:
-      - blueprint
-  psql:
-    image: postgres:latest
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_DATABASE}
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "${DB_PORT}:5432"
-    volumes:
-      - psql_volume:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}'"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    networks:
-      - blueprint
-
-volumes:
-  psql_volume:
-networks:
-  blueprint:
