@@ -54,8 +54,8 @@ A high-performance URL shortener service built with Go, featuring custom slugs, 
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Obsidian-ghost/u235-backend.git
-cd u235-backend
+git clone https://github.com/Obsidian-ghost/U-235
+cd U-235
 ```
 
 ### 2. Environment Configuration
@@ -190,8 +190,8 @@ curl -X POST http://localhost:1111/api/urls \
   -H "Content-Type: application/json" \
   -d '{
     "original_url": "https://example.com/very/long/url",
-    "custom_slug": "my-link",
-    "expires_at": "2024-12-31T23:59:59Z"
+    "custom_short_url": "my-link",
+    "expire_time": 10 //hours
   }'
 ```
 
@@ -208,7 +208,7 @@ curl -X POST http://localhost:1111/api/urls/expiry \
   -H "Content-Type: application/json" \
   -d '{
     "url_id": "your_url_id",
-    "new_expiry": "2025-12-31T23:59:59Z"
+    "hours": 72  //hours
   }'
 ```
 
@@ -262,7 +262,7 @@ The application uses the following PostgreSQL tables:
 
 This multi-platform deployment demonstrates:
 - **Frontend-Backend Separation**: React app served from CDN (Vercel) communicating with API
-- **Managed Database**: Production PostgreSQL with automatic backups
+- **Managed Database**: Production PostgreSQL
 - **Cloud Redis**: Serverless Redis for global low-latency caching
 - **CORS Configuration**: Properly configured for cross-origin requests
 
