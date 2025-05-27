@@ -184,5 +184,7 @@ func (u *UrlHandler) RedirectHandler(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "URL not found"})
 	}
 
-	return c.Redirect(http.StatusMovedPermanently, originalURL)
+	return c.JSON(http.StatusOK, map[string]string{
+		"originalUrl": originalURL,
+	})
 }

@@ -90,8 +90,6 @@ func (s *Server) RegisterRoutes() http.Handler {
 		userRoutes.GET("/profile", userHandler.UserProfileHandler)
 	}
 
-	// CRITICAL: Register the catch-all route LAST
-	// This ensures all specific routes are matched first
 	api.GET("/redirect/:shortId", urlHandler.RedirectHandler,
 		CustomMiddleware.ValidateShortId,
 		CustomMiddleware.UrlCache,
