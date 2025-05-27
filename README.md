@@ -254,7 +254,7 @@ The application uses the following PostgreSQL tables:
 ## 🚀 Deployment
 
 ### Live Application
-🌟 **[U235](https://mini-url-gold.vercel.app/) is deployed and running live!**
+🌟 **[U235](https://miniurl-beta.vercel.app/) is deployed and running live!**
 - **Frontend**: Deployed on [Vercel](https://vercel.com)
 - **Backend API**: Deployed on [Render](https://render.com)
 - **PostgreSQL**: Managed database on [Render](https://render.com)
