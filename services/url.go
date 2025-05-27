@@ -12,7 +12,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -37,7 +36,7 @@ func NewShortUrlService(repo repositories.RedisRepo, psql repositories.UrlsPsql)
 }
 
 func (r *ShortUrlService) CreateUrlService(userID uuid.UUID, req *models.CreateShortUrlReq, ctx context.Context) (*models.ShortenedUrlInfoRes, error) {
-	var Domain = os.Getenv("DOMAIN")
+	//var Domain = os.Getenv("DOMAIN")
 	CustomUrlTag := req.CustomShortUrl
 	urlInfo := models.ShortenedUrlInfoReq{
 		UserId:      userID,
@@ -48,13 +47,13 @@ func (r *ShortUrlService) CreateUrlService(userID uuid.UUID, req *models.CreateS
 		return nil, errors.New("invalid length of the custom url suffix")
 	} else if CustomUrlTag == "" {
 		shortID := core.GenerateShortID(req.OriginalUrl)
-		urlInfo.ShortUrl = Domain + shortID
+		urlInfo.ShortUrl = shortID
 	} else {
-		_, exists := r.RedisRepo.GetOriginalUrl(ctx, Domain+CustomUrlTag)
+		_, exists := r.RedisRepo.GetOriginalUrl(ctx, CustomUrlTag)
 		if exists {
 			return nil, errors.New("custom short url already exists")
 		}
-		urlInfo.ShortUrl = Domain + CustomUrlTag
+		urlInfo.ShortUrl = CustomUrlTag
 	}
 
 	urlInfo.ExpiresAt = time.Now().Add(time.Duration(req.ExpireTime) * time.Hour)

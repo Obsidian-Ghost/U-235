@@ -92,7 +92,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// CRITICAL: Register the catch-all route LAST
 	// This ensures all specific routes are matched first
-	e.GET("/:shortId", urlHandler.RedirectHandler,
+	api.GET("/redirect/:shortId", urlHandler.RedirectHandler,
 		CustomMiddleware.ValidateShortId,
 		CustomMiddleware.UrlCache,
 	)

@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"net/http"
-	"os"
 	"strconv"
 )
 
@@ -173,13 +172,14 @@ func (u *UrlHandler) ExtendExpiryHandler(c echo.Context) error {
 }
 
 func (u *UrlHandler) RedirectHandler(c echo.Context) error {
-	shortID := os.Getenv("DOMAIN") + c.Param("shortId")
+	shortID := c.Param("shortId")
 	if shortID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Missing short URL"})
 	}
 
 	// Get original URL from service
 	originalURL, err := u.UrlService.GetOriginalUrl(c.Request().Context(), shortID)
+	fmt.Print(originalURL)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "URL not found"})
 	}
