@@ -34,7 +34,8 @@ func ValidateShortId(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		// Only allow alphanumeric characters (adjust based on your encoding)
-		if matched, _ := regexp.MatchString(`^[a-zA-Z0-9]+$`, shortId); !matched {
+		// Don't allow hyphens at start or end
+		if matched, _ := regexp.MatchString(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`, shortId); !matched {
 			return echo.NewHTTPError(http.StatusNotFound, "Invalid short URL format")
 		}
 
