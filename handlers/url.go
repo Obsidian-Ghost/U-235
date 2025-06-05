@@ -179,7 +179,7 @@ func (u *UrlHandler) RedirectHandler(c echo.Context) error {
 
 	// Get original URL from service
 	originalURL, err := u.UrlService.GetOriginalUrl(c.Request().Context(), shortID)
-	fmt.Print(originalURL)
+	//fmt.Print(originalURL) # for Debugging
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "URL not found"})
 	}
