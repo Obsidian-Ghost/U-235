@@ -1,4 +1,4 @@
-# U235 URL Shortener - Backend
+# Mini URL Shortener - Backend
 
 A high-performance URL shortener service built with Go, featuring custom slugs, expiration management, and real-time cache synchronization.
 
