@@ -93,24 +93,24 @@ createdb test
 ```sql
 -- Users table
 CREATE TABLE users (
-                       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                       name VARCHAR(500),
-                       email VARCHAR(500) UNIQUE NOT NULL,
-                       password VARCHAR(500) NOT NULL,
-                       created_at TIMESTAMPTZ DEFAULT now(),
-                       updated_at TIMESTAMPTZ DEFAULT now()
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       name VARCHAR(500),
+       email VARCHAR(500) UNIQUE NOT NULL,
+       password VARCHAR(500) NOT NULL,
+       created_at TIMESTAMPTZ DEFAULT now(),
+       updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Shortened URLs table
 CREATE TABLE shortened_urls (
-                                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                                user_id UUID NOT NULL,
-                                original_url TEXT NOT NULL,
-                                short_url TEXT NOT NULL UNIQUE,
-                                expires_at TIMESTAMPTZ NOT NULL,
-                                is_active BOOLEAN NOT NULL DEFAULT TRUE,
-                                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                                CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       user_id UUID NOT NULL,
+       original_url TEXT NOT NULL,
+       short_url TEXT NOT NULL UNIQUE,
+       expires_at TIMESTAMPTZ NOT NULL,
+       is_active BOOLEAN NOT NULL DEFAULT TRUE,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Optional: Create indexes for better performance
