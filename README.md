@@ -178,7 +178,7 @@ GET    /api/user/profile     - Get user profile information
 
 ### URL Operations
 ```
-GET    /:shortId             - Redirect to original URL (with caching)
+GET    /redirect/:shortId    - Redirect to original URL (with caching)
 ```
 
 ### Example Requests
